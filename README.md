@@ -1,4 +1,9 @@
 # CapsNet-Keras
+
+**OLD README - WILL BE UPDATED SOON!**
+
+(forked from [XifengGuo/Caps](https://github.com/XifengGuo/CapsNet-Keras))
+
 [![License](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/XifengGuo/CapsNet-Keras/blob/master/LICENSE)
 
 A Keras implementation of CapsNet in the paper:   
@@ -22,7 +27,7 @@ This should be **equivalent** with using SSE (sum squared error) and `lam_recon=
 
 **Contacts**
 - Your contributions to the repo are always welcome. 
-Open an issue or contact me with E-mail `guoxifeng1990@163.com` or WeChat `wenlong-guo`.
+Simply open an issue or contact me.
 
 
 ## Usage
