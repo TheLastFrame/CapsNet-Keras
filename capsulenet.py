@@ -15,11 +15,11 @@ Result:
     
 Author: Xifeng Guo, E-mail: `guoxifeng1990@163.com`, Github: `https://github.com/XifengGuo/CapsNet-Keras`
 """
-
+import tensorflow as tf
 import numpy as np
-from keras import layers, models, optimizers
-from keras import backend as K
-from keras.utils import to_categorical
+from tensorflow.keras import layers, models, optimizers
+from tensorflow.keras import backend as K
+from tensorflow.keras.utils import to_categorical
 import matplotlib.pyplot as plt
 from utils import combine_images
 from PIL import Image
@@ -190,7 +190,7 @@ def manipulate_latent(model, data, args):
 
 def load_mnist():
     # the data, shuffled and split between train and test sets
-    from keras.datasets import mnist
+    from tensorflow.keras.datasets import mnist
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
     x_train = x_train.reshape(-1, 28, 28, 1).astype('float32') / 255.
@@ -203,8 +203,8 @@ def load_mnist():
 if __name__ == "__main__":
     import os
     import argparse
-    from keras.preprocessing.image import ImageDataGenerator
-    from keras import callbacks
+    from tensorflow.keras.preprocessing.image import ImageDataGenerator
+    from tensorflow.keras import callbacks
 
     # setting the hyper parameters
     parser = argparse.ArgumentParser(description="Capsule Network on MNIST.")
