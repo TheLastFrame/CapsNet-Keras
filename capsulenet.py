@@ -132,7 +132,7 @@ def train(model, train_generator, val_generator, args):
     return model
 
 
-def test(model, data, args):
+def test(model, data, args): #ToDo: change to new train_generator strategy
     x_test, y_test = data
     y_pred, x_recon = model.predict(x_test, batch_size=100)
     print('-'*30 + 'Begin: test' + '-'*30)
@@ -174,8 +174,8 @@ def manipulate_latent(model, data, args):
 
 
 
-def load_data(batch_size, data_dir):
-	datagen_kwargs = dict(rescale=1./255, validation_split=0.2)
+def load_data(batch_size, data_dir, val_split):
+	datagen_kwargs = dict(rescale=1./255, validation_split=val_split)
 	
 	datagen = tf.keras.preprocessing.image.ImageDataGenerator(
     **datagen_kwargs)
@@ -186,22 +186,19 @@ def load_data(batch_size, data_dir):
 		batch_size=batch_size,
 		subset='validation')
 
-	do_data_augmentation = True #@param {type:"boolean"}
-
-	if do_data_augmentation:
-		train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
-			#rotation_range=40,
-			#horizontal_flip=True,
-			#width_shift_range=0.2, height_shift_range=0.2,
-			#shear_range=0.2, zoom_range=0.2,      
-			**datagen_kwargs) #channel_shift_range=0.2, #brightness_range=[-0.1, 0.1], 
-	else:
-		train_datagen = valid_datagen
+	
+	train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+		#rotation_range=40,
+		#horizontal_flip=True,
+		#width_shift_range=0.2, height_shift_range=0.2,
+		#shear_range=0.2, zoom_range=0.2,      
+		**datagen_kwargs) #channel_shift_range=0.2, #brightness_range=[-0.1, 0.1], 
 
 	train_generator = train_datagen.flow_from_directory(
 		data_dir, subset="training", shuffle=True,
 		#target_size=(IMAGE_SIZE, IMAGE_SIZE),
 		batch_size=batch_size)
+
 	return train_generator, val_generator
 
 
@@ -236,6 +233,15 @@ if __name__ == "__main__":
                         help="The path of the saved weights. Should be specified when testing")
 	parser.add_argument('-d', '--directory', default=None, help="Directory where the training data is stored. Error if not assigned.")
 	parser.add_argument('-n', '--name', default="trained_model", help="Name for the model with which it will be saved.")
+	parser.add_argument('-vs', '--validation_split', default=0.2, type=float, help="Fraction of images reserved for validation (strictly between 0 and 1).")
+	parser.add_argument('--rotation_range', default=0, type=int, help="Rotation range for data augmentation.")
+	parser.add_argument('--horizontal_flip', default=False, help="Enables horizontal flip for data augmentation.")
+	parser.add_argument('--width_shift_range', default=0.0, type=float, help="Widht shift range for data augmentation. Should be within -1.0 to +1.0.")
+	parser.add_argument('--height_shift_range', default=0.0, type=float, help="Height shift range for data augmentation. Should be within -1.0 to +1.0.")
+	parser.add_argument('--shear_range', default=0.0, type=float, help="Shear range for data augmentation.")
+	parser.add_argument('--zoom_range', default=0.0, type=float, help="Zoom range for data augmentation.")
+	#parser.add_argument('--channel_shift_range', default=0.0, type=float, help="Channel shift range for data augmentation.")
+	#parser.add_argument('--brightness_range', default=0.0, type=float, help="Brightness range for data augmentation.")
     args = parser.parse_args()
     print(args)
 
@@ -244,7 +250,7 @@ if __name__ == "__main__":
 
     # load data
     #IMAGE_SIZE = 224
-	train_generator, val_generator = load_data(args.batch_size, args.directory)
+	train_generator, val_generator = load_data(args.batch_size, args.directory, args.validation_split)
 
 	#save image labels to file
 	print (train_generator.class_indices)
