@@ -90,7 +90,7 @@ def margin_loss(y_true, y_pred):
     return K.mean(K.sum(L, 1))
 
 
-def train(model, data, args):
+def train(model, train_generator, val_generator, args):
     """
     Training a CapsuleNet
     :param model: the CapsuleNet model
@@ -99,7 +99,7 @@ def train(model, data, args):
     :return: The trained model
     """
     # unpacking the data
-    (x_train, y_train), (x_test, y_test) = data
+    #(x_train, y_train), (x_test, y_test) = data
 
     # callbacks
     log = callbacks.CSVLogger(args.save_dir + '/log.csv')
@@ -114,32 +114,17 @@ def train(model, data, args):
                   loss=[margin_loss, 'mse'],
                   loss_weights=[1., args.lam_recon],
                   metrics={'capsnet': 'accuracy'})
-
-    """
-    # Training without data augmentation:
-    model.fit([x_train, y_train], [y_train, x_train], batch_size=args.batch_size, epochs=args.epochs,
-              validation_data=[[x_test, y_test], [y_test, x_test]], callbacks=[log, tb, checkpoint, lr_decay])
-    """
-
-    # Begin: Training with data augmentation ---------------------------------------------------------------------#
-    def train_generator(x, y, batch_size, shift_fraction=0.):
-        train_datagen = ImageDataGenerator(width_shift_range=shift_fraction,
-                                           height_shift_range=shift_fraction)  # shift up to 2 pixel for MNIST
-        generator = train_datagen.flow(x, y, batch_size=batch_size)
-        while 1:
-            x_batch, y_batch = generator.next()
-            yield ([x_batch, y_batch], [y_batch, x_batch])
-
+	
     # Training with data augmentation. If shift_fraction=0., also no augmentation.
-    model.fit_generator(generator=train_generator(x_train, y_train, args.batch_size, args.shift_fraction), #ToDo: change to model.fit
-                        steps_per_epoch=int(y_train.shape[0] / args.batch_size),
-                        epochs=args.epochs,
-                        validation_data=[[x_test, y_test], [y_test, x_test]],
-                        callbacks=[log, tb, checkpoint, lr_decay])
+    model.fit(train_generator,
+			  #steps_per_epoch=int(y_train.shape[0] / args.batch_size),
+			  epochs=args.epochs,
+			  validation_data=val_generator,
+			  callbacks=[log, tb, checkpoint, lr_decay])
     # End: Training with data augmentation -----------------------------------------------------------------------#
 
-    model.save_weights(args.save_dir + '/trained_model.h5') #ToDo: change to tf 2
-    print('Trained model saved to \'%s/trained_model.h5\'' % args.save_dir)
+    model.save_weights(args.save_dir + '/' + args.name +'.h5') #ToDo: change to tf 2
+    print('Trained model saved to \'%s/' + args.name + '.h5\'' % args.save_dir)
 
     from utils import plot_log
     plot_log(args.save_dir + '/log.csv', show=True)
@@ -188,16 +173,6 @@ def manipulate_latent(model, data, args):
     print('-' * 30 + 'End: manipulate' + '-' * 30)
 
 
-def load_mnist():
-    # the data, shuffled and split between train and test sets
-    from tensorflow.keras.datasets import mnist
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-
-    x_train = x_train.reshape(-1, 28, 28, 1).astype('float32') / 255.
-    x_test = x_test.reshape(-1, 28, 28, 1).astype('float32') / 255.
-    y_train = to_categorical(y_train.astype('float32'))
-    y_test = to_categorical(y_test.astype('float32'))
-    return (x_train, y_train), (x_test, y_test)
 
 def load_data(batch_size, data_dir):
 	datagen_kwargs = dict(rescale=1./255, validation_split=0.2)
@@ -227,6 +202,7 @@ def load_data(batch_size, data_dir):
 		data_dir, subset="training", shuffle=True,
 		#target_size=(IMAGE_SIZE, IMAGE_SIZE),
 		batch_size=batch_size)
+	return train_generator, val_generator
 
 
 if __name__ == "__main__":
@@ -259,7 +235,7 @@ if __name__ == "__main__":
     parser.add_argument('-w', '--weights', default=None,
                         help="The path of the saved weights. Should be specified when testing")
 	parser.add_argument('-d', '--directory', default=None, help="Directory where the training data is stored. Error if not assigned.")
-	parser.add_argument('-n', '--name', default="output", help="Name for the model with which it will be saved.")
+	parser.add_argument('-n', '--name', default="trained_model", help="Name for the model with which it will be saved.")
     args = parser.parse_args()
     print(args)
 
@@ -267,9 +243,8 @@ if __name__ == "__main__":
         os.makedirs(args.save_dir)
 
     # load data
-    #(x_train, y_train), (x_test, y_test) = load_mnist()
     #IMAGE_SIZE = 224
-	train_generator, validation_generator = load_data(args.batch_size, args.directory)
+	train_generator, val_generator = load_data(args.batch_size, args.directory)
 
 	#save image labels to file
 	print (train_generator.class_indices)
@@ -288,7 +263,7 @@ if __name__ == "__main__":
     if args.weights is not None:  # init the model weights with provided one
         model.load_weights(args.weights)
     if not args.testing:
-        train(model=model, data=((x_train, y_train), (x_test, y_test)), args=args)
+        train(model, train_generator, val_generator, args)
     else:  # as long as weights are given, will run testing
         if args.weights is None:
             print('No weights are provided. Will test using random initialized weights.')
