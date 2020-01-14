@@ -131,14 +131,14 @@ def train(model, data, args):
             yield ([x_batch, y_batch], [y_batch, x_batch])
 
     # Training with data augmentation. If shift_fraction=0., also no augmentation.
-    model.fit_generator(generator=train_generator(x_train, y_train, args.batch_size, args.shift_fraction),
+    model.fit_generator(generator=train_generator(x_train, y_train, args.batch_size, args.shift_fraction), #ToDo: change to model.fit
                         steps_per_epoch=int(y_train.shape[0] / args.batch_size),
                         epochs=args.epochs,
                         validation_data=[[x_test, y_test], [y_test, x_test]],
                         callbacks=[log, tb, checkpoint, lr_decay])
     # End: Training with data augmentation -----------------------------------------------------------------------#
 
-    model.save_weights(args.save_dir + '/trained_model.h5')
+    model.save_weights(args.save_dir + '/trained_model.h5') #ToDo: change to tf 2
     print('Trained model saved to \'%s/trained_model.h5\'' % args.save_dir)
 
     from utils import plot_log
@@ -199,6 +199,35 @@ def load_mnist():
     y_test = to_categorical(y_test.astype('float32'))
     return (x_train, y_train), (x_test, y_test)
 
+def load_data(batch_size, data_dir):
+	datagen_kwargs = dict(rescale=1./255, validation_split=0.2)
+	
+	datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+    **datagen_kwargs)
+	
+	val_generator = datagen.flow_from_directory(
+		data_dir,
+		#target_size=(IMAGE_SIZE, IMAGE_SIZE),
+		batch_size=batch_size,
+		subset='validation')
+
+	do_data_augmentation = True #@param {type:"boolean"}
+
+	if do_data_augmentation:
+		train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+			#rotation_range=40,
+			#horizontal_flip=True,
+			#width_shift_range=0.2, height_shift_range=0.2,
+			#shear_range=0.2, zoom_range=0.2,      
+			**datagen_kwargs) #channel_shift_range=0.2, #brightness_range=[-0.1, 0.1], 
+	else:
+		train_datagen = valid_datagen
+
+	train_generator = train_datagen.flow_from_directory(
+		data_dir, subset="training", shuffle=True,
+		#target_size=(IMAGE_SIZE, IMAGE_SIZE),
+		batch_size=batch_size)
+
 
 if __name__ == "__main__":
     import os
@@ -229,6 +258,8 @@ if __name__ == "__main__":
                         help="Digit to manipulate")
     parser.add_argument('-w', '--weights', default=None,
                         help="The path of the saved weights. Should be specified when testing")
+	parser.add_argument('-d', '--directory', default=None, help="Directory where the training data is stored. Error if not assigned.")
+	parser.add_argument('-n', '--name', default="output", help="Name for the model with which it will be saved.")
     args = parser.parse_args()
     print(args)
 
@@ -236,7 +267,16 @@ if __name__ == "__main__":
         os.makedirs(args.save_dir)
 
     # load data
-    (x_train, y_train), (x_test, y_test) = load_mnist()
+    #(x_train, y_train), (x_test, y_test) = load_mnist()
+    #IMAGE_SIZE = 224
+	train_generator, validation_generator = load_data(args.batch_size, args.directory)
+
+	#save image labels to file
+	print (train_generator.class_indices)
+	labels = '\n'.join(sorted(train_generator.class_indices.keys()))
+	label_file_name = model_name + '_labels.txt'
+	with open(label_file_name, 'w') as f:
+		f.write(labels)
 
     # define model
     model, eval_model, manipulate_model = CapsNet(input_shape=x_train.shape[1:],
